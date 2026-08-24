@@ -1,0 +1,28 @@
+Sample to annotate:
+<paste the sample here>
+
+You are an annotation expert for SWE-bench / agentic coding conversation data. Please score this "user <-> coding assistant" conversation on **D2-01 User Language Naturalness**.
+
+[What this dimension scores]
+What is evaluated is: whether **the user's individual utterances themselves** sound like something a real user would say in a collaboration, rather than a one-off, tidy, standardized task specification written by a benchmark author.
+Only look at whether the tone and wording of the user's messages are natural, whether they contain the colloquialisms, ellipsis, abbreviations, follow-up questions, emotions, or professional expressions common to real users, and whether they avoid being overly templated.
+
+[Note] When judging "naturalness," do not impose any fixed persona; only ask: in reality, would a person collaborating with a coding assistant talk this way. The user's level of expertise can differ across samples; being professional or concise is not itself penalized—only being templated, like a standard-answer specification, is penalized.
+
+[Decision flow]
+Sample-check the user's messages: are they overly tidy and complete; do they look like a task description written by a benchmark author; are there traces of real interaction (colloquialisms, follow-up questions, ellipsis, corrections, hesitation, etc.).
+
+[Scoring rubric (1-5, single score)]
+1: Clearly templated, like a one-off benchmark specification; language is overly tidy, complete, and standardized, with almost no trace of real user expression.
+2: Most of the expression still looks like a template, with natural-language traces only in a few places.
+3: Some natural expression exists, but the whole still leans toward a task specification; some sentences sound like a real user, some like a benchmark description.
+4: Most of the expression is natural, like a real user collaborating; occasionally there is a small amount of templating or excessive tidiness.
+5: Expression is highly natural; tone, wording, ellipsis, and level of expertise all sound like a real user in genuine collaboration.
+
+[Output format]
+Output only JSON:
+{
+  "d2_01_language_naturalness": <integer from 1-5>,
+  "reason": "one sentence explaining the basis for the score (focused on this dimension)",
+  "evidence": ["list 1-3 specific fragments that reflect whether the user's language is natural/unnatural"]
+}

@@ -1,0 +1,34 @@
+Sample to annotate:
+<paste the sample here>
+
+You are a data annotation expert for SWE-bench / coding tasks. Please judge, for the given sample, "how large an engineering scope the final change affects."
+
+Please make the classification judgment directly based on the provided information, and output the final JSON.
+
+The input may contain the issue description, repo name, file paths, patch/diff, test information, dialogue, or tool-call traces.
+
+[Category system]
+Dimension question: How large an engineering scope do the final code, configuration, script, or documentation changes affect?
+
+| Name            | Definition                                                                 |
+|-----------------|----------------------------------------------------------------------------|
+| no_change       | No artifact modification; only explanation, analysis, or advice            |
+| local           | One local point or a single logical unit (function, method, class, component, configuration block) |
+| single_file     | Modifications to multiple logical units within one file, or a file-level structural adjustment |
+| multi_file      | Multiple files, within the same module/package/component, without changing cross-component contracts |
+| cross_component | Cross-component collaboration logic, or changing a public API/CLI/schema/protocol |
+
+[Decision flow and edge cases]
+1. Is there any artifact modification? If none → no_change
+2. Is the modification confined to one logical unit? → local
+3. Still within one file but with multiple units / a file-level structural adjustment? → single_file
+4. Multiple files but the same functional domain, with no public-contract change? → multi_file
+5. Cross-component, or changing a public API/CLI/schema/protocol? → cross_component
+
+[Output format]
+Output only JSON:
+{
+  "change_scope": "<name>",
+  "reason": "a one-sentence explanation of the basis for the judgment",
+  "evidence": ["key evidence from the sample"]
+}

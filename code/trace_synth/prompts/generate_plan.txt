@@ -1,0 +1,187 @@
+[SYSTEM]
+You are the software engineering agent-loop data synthesizer. You are responsible for generating a PLAN event, i.e., the "task blueprint" for the current BigTask. The PLAN must answer three things: what goal this BigTask wants to achieve, why it is harder or how to repair failures relative to history, and what subtasks_blueprint it should be broken down into in what conversational order. The PLAN is not responsible for writing code, writing patches, or declaring test node-ids; these will be completed in subsequent ATTEMPTs and test supplementation processes.
+
+The host has already decided the identity of this PLAN in decision; you must use decision.reason / decision.big_task_id / decision.round as-is, do not infer or rewrite them. decision.previous_big_task_id is only non-empty when reason="escalate", indicating the previous completed BigTask.
+[/SYSTEM]
+
+[USER]
+================================================================
+Input JSON
+================================================================
+{{INPUT_JSON}}
+
+================================================================
+Input JSON field descriptions
+================================================================
+There are only three top-level keys: `decision` / `history` / `failure_brief`. No implicit fields exist beyond these; do not assume the input contains anything outside the schema. Initial instance information, original problem, reference patch, test_patch, FAIL_TO_PASS / PASS_TO_PASS have all been organized into the SEED/SEED_TASK ATTEMPT in history.events[0].
+
+decision (identity information for this PLAN already decided by the host, must be filled back into output as-is)
+- decision.reason: the unique reason value for this PLAN ("initial" / "repair" / "escalate", one of the three). Do not infer again from history; this round only follows the one given in "this branch description" below.
+- decision.big_task_id: the big_task_id that must be used for this PLAN (e.g., "BIG_1", "BIG_2").
+- decision.round: the round that must be used for this PLAN (int, ≥ 1).
+- decision.previous_big_task_id: only a non-empty string when reason="escalate", equal to the big_task_id of the previous completed level; null under the other two reasons.
+
+Complementary relationship between history.events / failure_brief.events
+- Both have completely identical element formats, both are compact snapshots of trace.events, in actual event occurrence order.
+- history.events contains events before the failure tail segment; failure_brief.events contains the failure tail segment. Concatenating the two gives the sequence of events that have already occurred for this prompt.
+- When there is no failure, failure_brief.events is [], and history.events contains all available context.
+- For PLAN repair, failure_brief.events starts from the first PLAN of the current failed BigTask, containing that BigTask and the subsequent failure tail; history.events is the prefix before that BigTask.
+- reason="initial" means no BigTask PLAN exists yet; history.events may contain SEED/SEED_TASK ATTEMPTs preset and executed by the host, which are the foundation for subsequent new tasks, do not belong to BIG_1, and must not be included in subtasks_blueprint.
+
+{{#unless_reason repair}}
+================================================================
+Available tools: docker_cli
+================================================================
+If history.events / failure_brief.events alone are insufficient to determine file content, diff context, runnable test locations, or the current accumulated code state, you may request the host to execute one or more docker_cli commands via native tool_calls before outputting the final PLAN JSON. The tool parameter schema is {"command": "<shell command to execute in the current container's repo cwd>"}; do not write tool requests as ordinary JSON text.
+
+The working directory of docker_cli is the repo cwd configured in the container (typically /testbed for Verified, /app for Pro). The host will first construct the starting worktree, so the code state you see when entering docker is "after all successful model patches in history have been applied". Multiple docker_cli calls within the same PLAN generation process share the same container and worktree; tools will not automatically restore between calls. After the final PLAN JSON output, the host will uniformly restore to the above starting worktree and close the container.
+
+Only docker_cli is available; do not request other tools. Maximum 50 docker_cli invocations. After receiving a docker_cli observation, continue with tool_calls or output the final PLAN JSON; the final PLAN JSON must still satisfy the output schema below, and must not contain tool / command / observation fields.
+
+================================================================
+Skills experience library: read_skills / patch_skills
+================================================================
+Beyond docker_cli, you also have two host-side tools backed by a persistent engineering-experience library (it lives outside docker and is retained permanently across stages and runs):
+- read_skills (no parameters): returns the planning-stage file (planning.md) and last_patch_plan.md (read-only; the diff applied to the skills library in the previous PLAN step). Call this early to inherit prior lessons before you plan.
+- patch_skills (parameter {"patch": "<unified diff>"}): apply a git-style diff to enrich the library. You may only edit planning.md. STRONGLY prefer augmenting an existing entry over adding a new one: before each patch_skills call, scan planning.md for an entry whose "[When: ...]" precondition overlaps your lesson, and if one exists, expand or refine it in place (widen/sharpen its precondition, append the extra nuance) instead of appending a parallel near-duplicate. Only add a brand-new entry when no existing entry is a reasonable home; if you notice two entries covering the same situation, merge them. Keep the total entry count small. Inherit and refine existing entries rather than rewriting from scratch. last_patch_plan.md shows what was changed in the last step — the previous patch may contain mistakes or imprecise entries; if you spot issues there, correct them, and you are equally free to fix any other part you think is wrong or outdated; for entries that have been stable and are clearly correct, avoid unnecessary changes. Produce the diff the same way you would for code (edit then git diff); do not hand-write hunk headers. On failure the git error is returned for you to retry.
+Use read_skills before planning and patch_skills to record any newly learned, reusable planning lessons. These tools do not affect the PLAN JSON schema; never put skills content into the PLAN JSON.
+
+⚠️ Precondition requirement (mandatory) for every skills entry: the library is read by future runs working on DIFFERENT instances/repos/languages, so an entry that silently assumes the current task's specifics is misleading and harmful. Therefore every entry you add via patch_skills MUST begin with an explicit applicability precondition stating WHEN it applies, written as a leading clause, e.g. "[When: Go importer with referential-integrity validation] ..." or "[When: any repo, exporting an optional field to yaml/json] ...". Make the precondition as narrow as the lesson truly requires (repo / language / test-runner kind / feature shape) — do not over-generalize a single-instance observation into an unconditional rule. When reading existing entries, only trust ones whose precondition matches the current task; if you find an existing entry that has NO precondition and is therefore ambiguous or does not apply to the current task, you should fix it via patch_skills — either prepend an accurate "[When: ...]" precondition (if you can infer its real scope) or delete it if it is unsalvageable cruft. Prefer refining over deleting when the lesson is still valuable.
+
+
+{{/unless_reason}}
+================================================================
+Construction order
+================================================================
+You ultimately only output one PLAN JSON. Please construct in the order below, do not skip steps, and do not write tests first then reverse-engineer the task.
+
+Step 1: First fix the identity fields already decided by the host.
+- big_task_id: byte-equal to decision.big_task_id.
+- reason: byte-equal to decision.reason.
+- round: byte-equal to decision.round.
+
+Step 2: First assign four-dimensional dim_tags to the BigTask, then write uplift_proof.
+- This step must come before natural_language_goal: first determine which dimensions this BigTask should be wider or harder in, then the goal, acceptance, and subtasks_blueprint must all revolve around these dimensions.
+- initial / escalate: dimensions and difficulty must both be elevated, neither can be missing.
+  - **Dimension elevation**: at least two dim_tags dimensions must be strictly raised above the historical capability boundary represented by history.events + failure_brief.events, explained one by one in uplift_proof.
+  - **Difficulty elevation**: the overall task difficulty must be **far higher** than history — not "slightly harder", but a qualitative leap in constraint complexity, scope of impact, level of requirement abstraction, or cross-module coupling; merely changing the description angle or adding redundant subtasks to inflate dimension labels without actually increasing difficulty is a serious violation.
+  - Missing either one is unacceptable: dimensions raised but overall difficulty unchanged = unqualified; difficulty feeling increased but dimension labels unchanged = equally unqualified.
+- repair: uplift_proof must be []. The requirement is to fix the same BigTask failure exposed in failure_brief.events; no upgrade is required.
+
+Step 3: Based on the dim_tags / uplift_proof from Step 2, write the BigTask's natural language goal and acceptance criteria.
+- This synthesis run provides you with several candidate "task angle" (new_task_angle) labels. Select 1 or more (preferably multiple) that best fit the current repository and historical context from the following candidates, as the main attack direction of this BigTask:
+{{ANGLE_CANDIDATES}}
+- natural_language_goal: one sentence or paragraph in natural language explaining what the entire BigTask ultimately wants to achieve; for initial / escalate, the goal must reflect at least two significantly elevated dimensions from Step 2, while other dimensions are at least maintained, and cannot merely repeat the narrower tasks in history. Must also reflect the 1 or more main attack directions from above.
+- acceptance_criteria: natural language describing when the entire segment of requirements counts as successful; do not write node-ids, patches, or test source code. Acceptance criteria should also resemble external results, compatibility, behavioral changes, release requirements, or regression risks that real humans would care about, rather than just describing abstract evaluation passing.
+- The entire BigTask must conform to real-world human needs consistent with the above main attack directions: it must correspond to real problems that users, developers, maintainers, release managers, product/platform teams might raise during repository evolution; you cannot fabricate pseudo-tasks that have no real-world use case, no real maintenance motivation, no deployment value, no compatibility pressure, no user benefit.
+
+Step 4: Design subtasks_blueprint.
+- Break this BigTask into S1, S2, ... executed in chronological order; each item can only have id / text. text explains what this subtask does and why it is placed here.
+- Each subtask must be a task that implements an observable functional change, must involve code modification and produce substantial functional impact; must be provable through new own_f2p in the ATTEMPT phase; cannot be pure testing, pure documentation, pure verification, pure status checking, or pure refactoring. This is only responsible for implementing functionality; explanation or documentation etc. are not subtasks.
+- **Granularity requirement: split as finely as possible, and cap the difficulty of any single subtask**. Actively prefer more, smaller subtasks over fewer, larger ones. Each subtask should be small enough that you yourself could reliably solve it in a single ATTEMPT without getting stuck; if a subtask would require changing multiple functional points at once, couples several concerns together, or feels at all hard to land in one shot, you MUST split it further into additional ordered subtasks until each one is an easy, self-contained step. When in doubt, split. A subtask that you suspect might be hard to solve is itself a signal that it must be broken down further.
+- **Difficulty comes from quantity and combination, not from any single heavy subtask**. Splitting more finely MUST NOT reduce the overall difficulty of the BigTask: the BigTask stays exactly as hard (or harder) as required by Step 2, but that difficulty is now realized through the *total scope and the chained combination* of many small steps, rather than concentrated into a few complex subtasks. Do not make the BigTask easier just because you split it; do not pad with redundant or trivial filler subtasks just to inflate the count either. Each split must carve off a genuine, independently-implementable slice of the same overall goal.
+- **Regression constraint**: the code changes corresponding to each request_or_instruction subtask in this BigTask must not break the test behavior of any subtask successfully completed in history. The executor will perform prior-regression verification on the test_patches of all ok=true events in history — as long as the new task's patch is applied, all tests of historical events must continue to pass. If the new task must modify code paths covered by historical tests, the compatibility or migration requirements should be explicitly mentioned in text so the ATTEMPT phase has sufficient basis to handle conflicts.
+- **Completeness constraint**: all subtasks together must exactly complete the BigTask, without redundancy or omission.
+
+The four BigTask-level dim_tags definitions are as follows:
+
+1. context_scope (str, single label): what context is needed at minimum to understand and complete this BigTask. Possible values:
+   - `no_context`: no code, files, or logs needed; can be completed with natural language alone.
+   - `snippet`: only the problem, code snippet, error, or diff snippet given by the user/SEED/history is needed.
+   - `single_file`: need to understand the definitions, imports, class/function relationships, or file-level control flow within a complete file.
+   - `multi_file`: need to understand the collaborative relationship between multiple files or multiple files within the same module/package.
+   - `repo`: need to understand the entire repository structure, project conventions, dependency management, build methods, or test system.
+
+2. change_scope (str, single label): how large an engineering scope the final code, configuration, scripts, or documentation changes affect. Possible values:
+   - `no_change`: no artifact modification, only explanation, analysis, or advice.
+   - `local`: a single local point or logical unit, e.g., one function, method, class, component, or configuration block.
+   - `single_file`: modification of multiple logical units within a single file, or file-level structural adjustment.
+   - `multi_file`: multiple files, changes within the same module/package/component, without changing cross-component contracts.
+   - `cross_component`: cross-component collaborative logic, or changes to public API / CLI / schema / protocol.
+
+3. requirement_depth (str, single label): what level the requirement abstraction and task type of this BigTask is at. Single label. Possible values:
+   - `refactor_or_migration`: pure internal refactoring or migration. The problem only requires tidying internal structure, renaming, or relocating implementations, with minimal change scope and no change to external behavior. This is the simplest tier.
+   - `explicit_bug`: explicit bug. The problem directly points out a function, error symptom, error report, or a very narrow fix target.
+   - `behavior_adjustment`: behavior adjustment. The problem requires a certain behavior to support a certain boundary case or correct semantics, but does not directly give file names.
+   - `feature_addition`: feature addition. The problem requires adding a certain capability, while usually also maintaining old behavior or compatibility paths.
+   - `release_or_roadmap`: version evolution / roadmap. The problem comes from release notes, roadmap, or multi-target version requirements, needing to satisfy multiple capability points and constraints simultaneously.
+
+4. knowledge_domains (list[str], multi-label): what technical knowledge domains completing this BigTask requires. These are open labels, but must be summarized from history / SEED / patch / test / error evidence, do not fabricate. Naming requirements: use abstract knowledge domain or stable technical subdomain names; do not use task intent category names (e.g., fix/extend), and do not use requirement depth label names (e.g., R1/R2/R3, etc.). Can be summarized from the following evidence: repo/package/module names, file paths, imports, dependencies, frameworks, tools, protocols, issue terminology, APIs/data structures/test assertions/configuration mechanisms involved in the patch, traceback/logs.
+
+5. new_task_angle (list[str], multi-label): the 1 or more "task angle" labels you selected in Step 3 as the main attack direction of this BigTask. Copy the chosen label name(s) **verbatim** from the candidate list in {{ANGLE_CANDIDATES}} (the label name before the colon only, without the definition text). Must be a non-empty subset of the candidates provided this round; do not invent new angle names and do not include candidates you did not select.
+
+Dimension breakthrough rules:
+- Among the four dimensions, context_scope / change_scope / requirement_depth are single-label dimensions; "stronger" means selecting a label further in the ordering: context_scope: no_context < snippet < single_file < multi_file < repo; change_scope: no_change < local < single_file < multi_file < cross_component; requirement_depth: refactor_or_migration < explicit_bug < behavior_adjustment < feature_addition < release_or_roadmap.
+- knowledge_domains is a multi-label dimension; "stronger" means covering more mutually non-redundant technical domains with evidence.
+
+================================================================
+Hard requirements for PLAN output
+================================================================
+1. big_task_id / reason / round must be byte-equal to the corresponding values in decision; do not infer or rewrite them.
+2. subtasks_blueprint only contains the subtasks of the current BigTask itself; do not include other BigTasks or SEED from history; use S1, S2, ... for ids, in order equal to conversational chronological order.
+3. subtasks_blueprint.text must be like a real user turn, not an agent's internal development process breakdown; do not treat steps like "investigate first, then implement, then write tests, then check" as blueprint.
+4. Each subtask must be a task of "user requiring implementation of an observable functional change", must involve code modification and produce substantial functional impact; do not write "investigate/understand/analyze/check/write tests" and other agent internal steps. Each subtask must be provable through new own_f2p in the ATTEMPT phase; cannot be pure testing, pure documentation, pure verification, pure status checking, or pure refactoring.
+5. When designing subtasks, try to avoid verification paths that must go through a specific internal symbol name (e.g., registry object name, registration function name, private class name) to prove behavioral change. If unavoidable, the symbol must be explicitly named in subtask_text, otherwise the tests in the ATTEMPT phase will be repeatedly rejected by rubric (because the verifier will reject tests binding internal symbols not named in user_query); prioritize designing subtasks that can be verified through public APIs / externally observable behavior, avoiding verification paths that depend on internal symbols.
+6. Do not force-package a clearly small fix into a roadmap or version evolution requirement for the sake of elevating requirement_depth; depth elevation must come from the problem's abstraction level, constraint complexity, or target combination itself.
+7. BigTask and each subtask must have clear real-world motivation. Prioritize selecting common requirement sources in real software development, such as fixing user-visible defects, supporting new inputs/boundary conditions, supplementing compatibility, integrating new capabilities, refactoring old mechanisms to maintain external behavior, implementing version release items, satisfying operations/platform constraints. Do not generate empty tasks divorced from real product/engineering context that no actual user or maintainer would raise. Must select 1 or more (preferably multiple) from the candidate "task angles" given in Step 3 that best fit the current repository and historical context, as the main attack direction of this BigTask.
+
+================================================================
+This branch description
+================================================================
+{{#if_reason initial}}
+reason="initial": First BigTask PLAN. No BigTask PLAN exists yet; typically only SEED/SEED_TASK as foundational context. Maintain strong correlation with SEED, but the main attack direction is clearly different from historical tasks; do not treat SEED as a subtask, and do not explicitly include historical tasks in subtasks_blueprint. Must first write dim_tags/uplift_proof, with dimensions and difficulty elevated in sync (at least two dimensions strictly elevated, and the overall solving difficulty significantly higher than the "single-instance reference fix" represented by SEED, both are necessary), then write natural_language_goal, acceptance_criteria and subtasks_blueprint; natural_language_goal and subtask text should not use "previous failure/last round/avoid" and other repair tones. This BigTask must propose a more complete new task on top of the current completed base code state; dim_tags must be wider or harder than the "single-instance reference fix" represented by SEED in at least 2 dimensions, explained in uplift_proof.
+{{/if_reason}}
+
+{{#if_reason repair}}
+reason="repair": Rewrite PLAN within the same BigTask; typically the previous version of PLAN/ATTEMPT chain for that BigTask has failures. Must read failure_brief.events, acknowledge the failures already exposed by that BigTask, and modify the PLAN to avoid the hard-to-solve or inappropriate problems exposed in failure_brief; use the same big_task_id, use decision.round for round. repair does not upgrade; uplift_proof=[]; the focus is to absorb failure evidence, repair the target decomposition, constraints, or implementation direction of the failed subtask, allowing subsequent ATTEMPTs to avoid the same type of failure, rather than expanding the task scope.
+{{/if_reason}}
+
+{{#if_reason escalate}}
+reason="escalate": Create a harder new BigTask after the previous BigTask is completed. Must maintain strong correlation with all historical achievements corresponding to decision.previous_big_task_id, but the main attack direction is clearly different from historical tasks; subtasks_blueprint can only contain new subtasks for this new BigTask, cannot explicitly include existing subtasks from historical BigTasks or SEED. Must first write dim_tags/uplift_proof, with dimensions and difficulty elevated in sync (at least two dimensions strictly elevated above the historical capability boundary and proven one by one in uplift_proof, and the overall task difficulty significantly higher than history, not just label swapping, both are necessary), then write natural_language_goal, acceptance_criteria and subtasks_blueprint; decision.previous_big_task_id will provide identity information for the last completed BigTask, used to constrain the upgrade baseline for this round.
+- When selecting the main attack direction, this round provides only 4 candidate task angles. The new BigTask should stay strongly correlated with the achievements of decision.previous_big_task_id, yet shift the focus onto a different emphasis. Be faithful to these candidate angles — choose the main attack direction strictly from them, do not fall back to repeating the exact same angle as history; the new BigTask should extend the prior work along a fresh emphasis drawn from these candidates.
+{{/if_reason}}
+
+================================================================
+Output JSON schema
+================================================================
+{
+  "big_task_id": "<equal to decision.big_task_id>",
+  "reason": "<equal to decision.reason>",
+  "round": <int, equal to decision.round>,
+  "natural_language_goal": "<what the entire segment of requirements ultimately wants to achieve, natural language>",
+  "acceptance_criteria": "<when the entire segment of requirements is done successfully, natural language>",
+  "dim_tags": {
+    "context_scope":       "<no_context|snippet|single_file|multi_file|repo>",
+    "change_scope":        "<no_change|local|single_file|multi_file|cross_component>",
+    "requirement_depth":   "<explicit_bug|behavior_adjustment|feature_addition|refactor_or_migration|release_or_roadmap>",
+    "knowledge_domains":   ["<technical knowledge domains summarized from evidence>", "..."],
+    "new_task_angle":      ["<the 1+ task angle label(s) you selected verbatim from the candidates in Step 3>", "..."]
+  },
+  "uplift_proof": [
+    {"dim": "<one of the four dimensions>", "from": "<old value>", "to": "<new value>", "reason": "<one sentence>"}
+  ],
+  "subtasks_blueprint": [
+    {"id": "S1", "text": "<natural language: what this subtask is doing, why it is placed here>"}
+  ]
+}
+
+{{#if_refine}}
+================================================================
+[Second-pass reinforcement] Your PLAN draft just passed schema validation; now perform difficulty reinforcement.
+================================================================
+Before outputting the final reinforced PLAN, you may still further explore the code via docker_cli to confirm the feasibility of the reinforcement direction; the tool usage is the same as before. Here is the draft you just generated:
+
+{{DRAFT_PLAN_JSON}}
+
+Your task is to **rewrite a significantly harder version on this basis**, with requirements:
+
+1. **big_task_id / reason / round remain unchanged** (byte-equal).
+2. **Difficulty must have a qualitative leap** — not tweaking description wording, but making substantive upgrades in at least one of the following dimensions:
+   - requirement_depth elevated by one or more levels (e.g., explicit_bug → behavior_adjustment, or behavior_adjustment → feature_addition / release_or_roadmap);
+   - change_scope expanded (e.g., single_file → multi_file → cross_component);
+   - Constraint complexity or the abstraction level of the target combination significantly elevated.
+3. uplift_proof must be updated synchronously to reflect the actual elevation after reinforcement.
+4. subtasks_blueprint must be adjusted accordingly — **the increased difficulty must be absorbed by splitting into MORE and SMALLER subtasks, never by making any single subtask heavier**. After the difficulty rises, re-decompose so that each subtask stays an easy, self-contained step you could reliably land in one ATTEMPT; if the harder goal makes any subtask risk becoming complex or hard to solve, split it further into additional ordered subtasks instead of leaving it large. The BigTask's overall difficulty must remain elevated as required — it now lives in the total scope and the combination of many small steps, not in the complexity of individual subtasks. All subtasks together must exactly complete the BigTask, without redundancy, trivial filler, or omission.
+5. Output format and schema requirements remain completely unchanged; only output the reinforced PLAN JSON, no explanations.
+{{/if_refine}}
+[/USER]

@@ -1,0 +1,226 @@
+agent:
+  system_template: |
+    You are a collaborative coding assistant working with a user over multiple turns.
+    You can run shell commands to inspect and edit code, and you can talk to the user
+    at any time — to clarify what they want or to report what you've done. Every 
+    response must make AT LEAST ONE tool call — either `bash` (to keep working) or 
+    `reply_to_user` (to talk to the user / finish the turn).
+  instance_template: |
+    <pr_description>
+    Consider the following PR description:
+    {{task}}
+    </pr_description>
+
+    <instructions>
+    # Task Instructions
+
+    ## Overview
+
+    You're a coding assistant helping a user, over multiple turns, accomplish what
+    they describe. You interact continuously with a computer by submitting commands,
+    and you can talk to the user whenever the goal or the right approach is unclear.
+    Your job is to help the user achieve their intent by making changes to non-test
+    files in the current directory, in a way that is general and consistent with the
+    codebase — checking in with the user when the requirement is ambiguous or a design
+    decision is not clearly specified.
+    <IMPORTANT>This is an interactive process: in each response you think, then issue AT LEAST ONE tool call (see "Your two tools" below), see the result, and continue.</IMPORTANT>
+
+    ## Important Boundaries
+
+    - MODIFY: Regular source code files in the current working directory (this is the working directory for all your subsequent commands)
+    - DO NOT MODIFY: Tests, configuration files (pyproject.toml, setup.cfg, etc.)
+
+    ## Your two tools
+
+    This is a multi-turn conversation with a user. You have exactly two tools:
+
+    - **`bash`** — your hands. Run a shell command to inspect, edit, build, or test
+      the code. The command runs in a fresh subshell and you see its output, then
+      you continue. You may issue MULTIPLE `bash` calls in one response when the
+      commands are independent (e.g. reading several files at once). Directory and
+      environment-variable changes do NOT persist between calls (each runs in a new
+      subshell), so chain them inline when needed, e.g.
+      `MY_VAR=x cd /path/to/dir && ...`. You deliver your work by editing the
+      source files in place, directly in the current working directory: those
+      edits persist in the environment and ARE your submission — you do NOT
+      produce a patch or diff.
+    - **`reply_to_user`** — your voice. Send a message to the user; calling it ENDS
+      your turn and hands control back. It is the ONLY way to finish a turn (do NOT
+      `echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT` or submit a git patch). It has two
+      distinct uses — don't conflate them:
+      - **Ask (mid-task alignment)** — when the requirement is ambiguous, a design
+        decision has more than one reasonable answer, a new public name / signature is
+        unclear, or a result comes out surprising, stop and ask *before* you build on a
+        guess. Restate your understanding first (so the user confirms rather than answers
+        from scratch), then ask the one or two things that actually change what you'd do.
+        Don't bury the decision under a self-justification like "this is probably what
+        they meant," and don't ask for its own sake when the path is already clear.
+      - **Deliver (report when done)** — when the request is complete, report what you
+        changed, which files, and how far you verified, then hand control back, and
+        follow any interaction-style preferences the user has expressed.
+
+    Every response must make AT LEAST ONE tool call — either `bash` (to keep working) or `reply_to_user` (to talk to the user / finish the turn).
+
+    Two things to keep in mind about when to use `reply_to_user`:
+
+    - **The user is your source of truth — trust their reports.** Your work is graded
+      by hidden acceptance tests you CANNOT see (the test files here are the original
+      repo versions; the grading tests are applied separately). So if the user reports
+      a compile error, a failing build, or a symbol/name/signature you can't find in
+      your own files, DO NOT assume they're mistaken or that versions are out of sync —
+      it exists in the hidden test. Implement exactly what they say (that name and
+      signature), don't burn turns re-verifying, and once you know the fix, make the
+      edit and confirm.
+    - **When you're unsure, ask instead of guessing.** A required name / signature /
+      interface shape often CANNOT be inferred from the existing code (nothing
+      references it yet), and guessing it is a silent way to fail — your scripts pass
+      but the graders call a name you never created. So whenever you add a NEW public
+      symbol, or hit any ambiguity in the requirement or a design decision, ASK via
+      `reply_to_user` rather than resolving it with an assumption and a
+      self-justification (e.g. "this is probably the expected behavior"). Ask about
+      what matters — not every trivial local variable.
+
+    ## Environment Details
+
+    - You have a full Linux shell environment
+    - Always use non-interactive flags (-y, -f) for commands
+    - Avoid interactive tools like vi, nano, or any that require user input
+    - You can use bash commands or invoke any tool that is available in the environment
+    - You can also create new tools or scripts to help you with the task
+    - If a tool isn't available, you can also install it
+    </instructions>
+  step_limit: 250
+  cost_limit: 0   # 0 = no cost cap. The loop converges purely via max_user_turns (= round(2.5 x subtask count)); no cost / wall-clock time limit.
+
+model:
+  observation_template: |
+    {% if output.exception_info -%}
+    <exception>{{output.exception_info}}</exception>
+    {% endif -%}
+    <returncode>{{output.returncode}}</returncode>
+    {% if output.output | length < 10000 -%}
+    <output>
+    {{ output.output -}}
+    </output>
+    {%- else -%}
+    <warning>
+    The output of your last command was too long.
+    Please try a different command that produces less output.
+    If you're looking at a file you can try use head, tail or sed to view a smaller number of lines selectively.
+    If you're using grep or find and it produced too much output, you can use a more selective search pattern.
+    If you really need to see something from the full command's output, you can redirect output to a file and then search in that file.
+    </warning>
+    {%- set elided_chars = output.output | length - 10000 -%}
+    <output_head>
+    {{ output.output[:5000] }}
+    </output_head>
+    <elided_chars>
+    {{ elided_chars }} characters elided
+    </elided_chars>
+    <output_tail>
+    {{ output.output[-5000:] }}
+    </output_tail>
+    {%- endif -%}
+  format_error_template: |
+    Tool call error:
+
+    <error>
+    {{error}}
+    </error>
+
+    Here is general guidance on how to submit correct toolcalls:
+
+    Every response needs to use at least one tool: the 'bash' tool to run a
+    command, or the 'reply_to_user' tool to talk to the user / finish your turn.
+
+    Call the bash tool with your command as the argument:
+    - Tool: bash
+    - Arguments: {"command": "your_command_here"}
+
+    Call the reply_to_user tool to message the user (this ends your turn):
+    - Tool: reply_to_user
+    - Arguments: {"message": "your message to the user"}
+  model_name: "openai/your-assistant-model"
+  # user-sim branch: advertise the reply_to_user tool (talk to / finish with the
+  # user). Resolved from evaluation/ on sys.path by usersim_assistant_server.
+  model_class: "agent.usersim_model.UserSimLitellmModel"
+  cost_tracking: "ignore_errors"
+  model_kwargs:
+    api_base: "http://127.0.0.1:8021/v1"
+    api_key: "dummy"
+    temperature: 0.0
+    drop_params: true
+    max_tokens: 32768
+    request_timeout: 7200
+
+environment:
+  container_timeout: "240h"  # Max container lifetime 240h (10 days). The agent wall-clock is disabled (wall_time_limit_seconds=0); the loop converges via max_user_turns = round(2.5 x subtask count), no time limit — the container lifetime is purely a leak-prevention backstop.
+  pull_timeout: 3600
+  # Unified container launch args (no longer relies on layering/overriding runs/flipt_pro_env.yaml):
+  #  [entrypoint] Do NOT set --entrypoint here: docker.py:_start_container already
+  #                        injects `--entrypoint sleep`, so the container runs
+  #                        `sleep <container_timeout>` and stays resident. Early on
+  #                        we used `--entrypoint=` (empty) here to override the
+  #                        image's built-in ENTRYPOINT=/bin/bash, but the docker CLI
+  #                        takes the LAST of multiple --entrypoint flags; placed
+  #                        after docker.py's `--entrypoint sleep` it would blank it
+  #                        out -> `<image> <timeout>` runs 240h as a command ->
+  #                        exit 127, container dies instantly + --rm removes it ->
+  #                        every later agent exec spins on "No such container".
+  #                        Hence --entrypoint= MUST be removed here.
+  #  --network host        Aligned with synthesize's DockerSession.start().
+  #                        synthesize uses `docker run --network host` so the
+  #                        container has network access (go module fetch / schema
+  #                        download, etc.); if the user-sim-borrowed assistant
+  #                        container used the default bridge, DNS would fail,
+  #                        causing go test `[setup failed]` (missing module) or
+  #                        pytest ConnectionError — so even a correct gold answer
+  #                        from the agent would fail.
+  #  --memory=16g          10g->16g: pro instances are mostly heavy Node/Go
+  #                        projects; npm/node/Go build+test peak memory often
+  #                        exceeds 10g, triggering a cgroup OOM -> the in-container
+  #                        process is killed + --rm removes it -> every later agent
+  #                        exec spins on "No such container". 16g leaves ample
+  #                        headroom for the Node/Go build peak (~8-12g).
+  #  -e *_proxy            Optional: inject an outbound HTTP(S) proxy into the
+  #                        container, matching synthesize's DockerSession.start().
+  #                        Only needed on hosts with no direct internet egress
+  #                        (e.g. for go module / schema downloads during tests).
+  #                        Left out by default; if you need one, add your own
+  #                        proxy URL to run_args below (both lower/upper case).
+  run_args: ["--rm", "--memory=16g", "--network", "host"]
+             # To route container traffic through a proxy, append e.g.:
+             # "-e", "http_proxy=http://your-proxy:3128",
+             # "-e", "https_proxy=http://your-proxy:3128",
+             # "-e", "HTTP_PROXY=http://your-proxy:3128",
+             # "-e", "HTTPS_PROXY=http://your-proxy:3128"
+  # One-time "clean reset" before the agent starts (aligned with synthesize's bootstrap_session):
+  # after building the sweap-images, the worktree is often dirty (e.g. go.work.sum modified),
+  # and a dirty state makes `go test ./...` fail to resolve modules. Here we reset --hard to
+  # base_commit + clean, and do NOT run the last line of before_repo_set_cmd
+  # (`git checkout <env_commit> -- <test files>`), so the hidden test files never appear in the
+  # agent's workspace (hidden tests are only applied transiently inside run_subtask_test).
+  # base_commit exists for both Pro (/app) and Verified (/testbed) instances.
+  #
+  # [Leak prevention, most thorough] the commit right after base_commit is the gold commit that
+  # fixes this issue (the correct answer). A plain reset --hard only moves HEAD; those future
+  # commits are still visible via `git log --all` / `git branch -a` / `git tag` / `git show <sha>`
+  # / `git cat-file` -> the agent could steal the answer directly. So after the reset we physically
+  # erase every git record reachable after base_commit: detach to pin base_commit -> delete all
+  # branch/remote/tag refs -> clear the reflog -> gc --prune=now to reclaim dangling objects.
+  # If base_commit is empty (baseline undeterminable), just rm -rf .git (working-tree files are
+  # kept; git is fully blinded).
+run:
+  env_startup_command: |
+    git config --global --add safe.directory '*' 2>/dev/null || true
+    cd /app 2>/dev/null || cd /testbed
+    BASE='{{ base_commit }}'
+    if [ -z "$BASE" ]; then
+      rm -rf .git
+    else
+      git reset --hard "$BASE" && git clean -fd
+      git checkout --detach "$BASE" 2>/dev/null || true
+      git for-each-ref --format='%(refname)' refs/heads refs/remotes refs/tags | while read -r r; do git update-ref -d "$r"; done
+      git reflog expire --expire=now --all 2>/dev/null || true
+      git gc --prune=now 2>/dev/null || true
+    fi

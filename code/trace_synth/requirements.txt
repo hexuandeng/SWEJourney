@@ -1,0 +1,13 @@
+# Runtime dependencies for the trace-synthesis engine (code/trace_synth), when
+# run standalone. This is the benchmark-generation subset of the repo-root
+# requirements.txt — keep the version pins in sync with that file.
+# Versions reflect a known-good environment; loosen as needed for your setup.
+
+requests>=2.31          # HTTP client for the LLM gateway
+swebench>=4.0           # SWE-bench harness utils (test specs, parsers, directives)
+unidiff>=0.7            # unified-diff parsing / patch application
+datasets>=2.14          # HuggingFace load_from_disk for instance datasets
+PyYAML>=6.0             # config.yaml loader
+
+# Note: Docker is required at runtime (invoked via the `docker` CLI) to run the
+# per-instance test containers; it is not a pip dependency.

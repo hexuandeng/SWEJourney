@@ -1,0 +1,24 @@
+Sample to annotate:
+<paste the sample here>
+
+You are an expert reviewer of SWE-bench / agentic coding task authenticity. Assign an integer score of 1-5 for the sample on "cross-file / cross-module collaboration", and output JSON. A low score means this data point is of poor quality and should be discarded.
+
+Cross-file / cross-module collaboration: judge whether this task naturally requires coordinating changes across multiple files/modules, and whether this cross-file nature is driven by real code dependencies, rather than artificially splitting a single change and spreading it across multiple files to manufacture the illusion of "looking very cross-file". The key is not how many files were changed, but whether the changes are truly coupled: if one place is changed, another place must be changed accordingly for it to hold (cross-file symbol references, shared interfaces, call chains, correspondence between configuration and implementation, correspondence between implementation and tests, etc.).
+Operational criterion: imagine removing the changes to one of the files; can the task still count as complete? — No, which means these changes are truly coupled; Yes, which means that file was only incidental or forced in. "Module" is understood by the natural organization of the code (different packages/directories/units of responsibility); there is no need to fuss over the precise boundaries.
+Focus: how many files and how many modules the changes actually involve; what kind of dependency relationship exists between them; whether the cross-file nature is a natural requirement of the architecture or artificially cut apart.
+Example: only changing logic within one function and incidentally changing a comment in the same file = single point; changing an interface signature, causing its several callers to have to change accordingly = true collaboration; adding a feature that requires simultaneously touching the interface definition, implementation, callers, configuration, and corresponding tests, none of which can be omitted = architectural coordination.
+About tests: changing the implementation almost inevitably drives the corresponding tests, and this "implementation-test" linkage exists in almost all tasks; consider it separately and do not raise the score on its basis; this dimension focuses on the real coupling between product code.
+
+rubric:
+1 Forced/pseudo cross-module, the changes are scattered across multiple files but have no real coupling with each other, or it could have been completed at a single point but was spread out.
+2 Basically single point, essentially a single-file/single-module job, and the accompanying other changes (such as incidentally changing comments) have no substantive dependency relationship.
+3 Local collaboration, there is a small amount of real cross-file dependency (such as one interface change affecting one or two callers), and the collaboration surface is fairly narrow.
+4 Clearly cross-module, multi-file changes driven by real dependencies, involving cross-module interface/call-chain/contract linkage, and the collaboration is necessary.
+5 Architectural coordination, naturally required by the system architecture or core dependencies, multiple modules must be changed in a coordinated way (interface, implementation, callers, configuration, tests), none of which can be omitted.
+
+Output JSON only (score is an integer 1-5; if information is insufficient, judge conservatively based on the available clues and still give a single score value; reason focuses only on this dimension):
+{
+  "cross_file_collaboration": 1-5,
+  "reason": "why this score and not an adjacent one",
+  "evidence": ["list 1-3 concrete snippets/signals from the sample"]
+}

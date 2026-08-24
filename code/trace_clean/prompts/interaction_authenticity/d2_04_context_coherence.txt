@@ -1,0 +1,27 @@
+Sample to annotate:
+<paste the sample here>
+
+You are an annotation expert for SWE-bench / agentic coding conversation data. Please score this "user <-> coding assistant" conversation on **D2-04 Context Anaphora and Ellipsis**.
+
+[What this dimension scores]
+What is evaluated is: whether the user's utterances across multiple turns **naturally follow the preceding text**—with back-references and ellipsis such as "this," "the one just now," "the previous version," "continue as you said," rather than every turn reading like a mutually independent task specification.
+
+[Decision flow]
+Check the cohesion between the user's multi-turn messages: does natural anaphora appear; is the referent of the anaphora clear; can the elided information be recovered from context; does every turn repeat the full background so it does not read like a continuous conversation.
+Note: if the sample itself has only a single-turn user input and no multiple turns, then there is no context to refer back to (no anaphora, ellipsis, or continuation exists); handle it as **1-3 points** and note in reason "single turn, no multi-turn context".
+
+[Scoring rubric (1-5, single score, strict)]
+This dimension uses a strict standard: cases that could originally only get 3 points or below (disjointed, repeated spec, unnatural anaphora) are all pushed to the bottom; only those that truly read like a continuous, real conversation get a high score.
+1: There is some contextual continuation, but quite a few turns still look like re-describing the task; anaphora/ellipsis is present sometimes and absent other times, and the whole leans disjointed.
+2: Most turns can follow the preceding text, but they still mix in obvious background repetition or stiff anaphora; continuation quality is uneven.
+3: Most turns naturally follow the preceding text; anaphora, ellipsis, and context dependence are basically clear, with occasional unnatural spots.
+4: Continuation is natural and stable; anaphora referents are clear, ellipsis can be recovered from context, and the full background is almost never repeated.
+5: Multi-turn continuation is very natural; expression clearly depends on the preceding text, and anaphora, ellipsis, continuation, and correction are all clearly parseable, entirely the pacing of a real continuous conversation.
+
+[Output format]
+Output only JSON:
+{
+  "d2_04_context_coherence": <integer from 1-5>,
+  "reason": "one sentence explaining the basis for the score (focused on this dimension)",
+  "evidence": ["list 1-3 specific fragments that reflect context anaphora/disjointedness"]
+}

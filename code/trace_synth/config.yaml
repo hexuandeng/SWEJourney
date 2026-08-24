@@ -1,0 +1,46 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Trace-synthesis runtime configuration.
+#
+# Precedence: environment variable (via *_env) > this file > built-in defaults.
+# base_url / model / paths support ${ENV_VAR} expansion.
+# Copy & edit this file for your deployment; nothing here is secret (put real
+# API keys in the environment variables named by *_env, never in this file).
+# ─────────────────────────────────────────────────────────────────────────────
+
+clients:
+  # Main model: Anthropic official Messages API (standard x-api-key auth).
+  main:
+    backend: anthropic
+    base_url: https://api.anthropic.com/v1/messages
+    model: claude-opus-4-1
+    api_key_env: ANTHROPIC_API_KEY
+    anthropic_version: "2023-06-01"
+
+  # JSON-repair model: OpenAI official Chat Completions API (Bearer auth).
+  repair:
+    backend: openai
+    base_url: https://api.openai.com/v1/chat/completions
+    model: gpt-4o
+    api_key_env: OPENAI_API_KEY
+
+  # First-call (cheap) model used for the early cascade rounds. Point this at
+  # a local / self-hosted OpenAI-compatible server (vLLM, SGLang, ...).
+  first_call:
+    backend: local
+    base_url: http://127.0.0.1:8000/v1/chat/completions
+    model: local-model
+    api_key_env: LOCAL_API_KEY   # leave the env var unset if the server needs no auth
+
+# Deployment paths. Leave empty to fall back to CLI args / built-in behaviour.
+paths:
+  dataset: ""            # HuggingFace load_from_disk dir for single-instance runs
+  full_dataset: ""       # full dataset dir (fill-skeleton authoritative source)
+  subset_jsonl: ""       # instance_id subset list for batch runs
+  docker_pro_dir: ""     # local dir with SWE-bench_Pro docker image tars (optional)
+  docker_verified_dir: "" # local dir with SWE-bench_Verified docker image tars (optional)
+  hf_home: ""            # HF_HOME cache dir; empty → inherit environment
+
+runtime:
+  python: ""   # python interpreter for batch subprocesses; empty → sys.executable
+  proxy: ""    # http(s) proxy injected into docker containers; empty → none
+  usage: "1"   # LLM usage tag passed through to the gateway

@@ -1,0 +1,25 @@
+Sample to annotate:
+<paste the sample here>
+
+You are an annotation expert for SWE-bench / agentic coding conversation data. Please score this "user <-> coding assistant" conversation on **D2-02 Non-oracle Input**.
+
+[What this dimension scores]
+What is evaluated is: whether **the user** has, like an oracle, told the assistant the answer in advance. The user may only provide information that a real user in that scenario could know (goals, symptoms, visible errors, real run results, reasonable constraints), and may not leak the hidden implementation path, the standard patch approach, private helpers, the assertion conditions of hidden tests, or details that only a benchmark author would know.
+
+[Decision flow]
+Check whether the user's input contains information that a real user should not know: specific private function names, hidden test assertions, implementation paths that only appear in the standard patch, overly precise instructions about internal structure, or requirement descriptions that were clearly back-derived from the solution.
+
+[Scoring rubric (1-5, single score)]
+1: Clearly leaks the standard answer or the hidden oracle; the user is almost directly telling the assistant how to make the change.
+2: There are quite a few unnatural implementation hints; although the answer is not fully leaked, it clearly exceeds what a real user could know.
+3: There is a local tendency toward being oracle-like (overly detailed implementation direction or internal details), but the main body is still goals, symptoms, or constraints.
+4: Essentially no oracle leakage; only a small number of borderline-ambiguous technical hints, still explainable as something a real user might know.
+5: Fully consistent with a real user's information boundary; provides only goals, symptoms, business constraints, visible errors, real run results, or reasonable maintenance constraints.
+
+[Output format]
+Output only JSON:
+{
+  "d2_02_non_oracle_input": <integer from 1-5>,
+  "reason": "one sentence explaining the basis for the score (focused on this dimension)",
+  "evidence": ["list 1-3 specific fragments that reflect whether the oracle is leaked"]
+}

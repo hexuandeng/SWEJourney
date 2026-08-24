@@ -1,0 +1,68 @@
+[SYSTEM]
+You are the software engineering agent-loop data synthesizer. You are synthesizing a brand-new ATTEMPT event for the agent-loop trace, i.e., landing the current target subtask into an executable attempt: subtask_id = "{{TARGET_SUBTASK_ID}}"; subtask_text = "{{TARGET_SUBTASK_TEXT}}". You are now responsible for generating the user query and acceptance_criteria for this ATTEMPT. This user query must strictly align with the behavioral change specified by the subtask_text above; you must not rewrite the task into a new API, new feature, or a bypass convenience interface. Your responsibility is only to write out how the user would present this subtask in this round and the corresponding acceptance_criteria.
+[/SYSTEM]
+
+[USER]
+================================================================
+Input JSON
+================================================================
+{{INPUT_JSON}}
+
+================================================================
+Input JSON field descriptions
+================================================================
+There are only four top-level keys: `test_runner` / `history` / `target` / `failure_brief`. No implicit fields exist beyond these; do not assume the input contains anything outside the schema. Initial instance information, original problem, reference patch, test_patch, FAIL_TO_PASS / PASS_TO_PASS have all been organized into the SEED/SEED_TASK ATTEMPT in history.events[0].
+
+test_runner
+- The test execution method for the current instance. This is only used as background for subsequent ATTEMPT test generation; do not write the test runner, test script format, or evaluation details into `user_query`.
+
+Complementary relationship between history.events / failure_brief.events
+- Both have completely identical element formats, both are compact snapshots of trace.events, in actual event occurrence order.
+- history.events contains events before the failure tail segment; failure_brief.events contains the failure tail segment of the current subtask. Concatenating the two gives the sequence of events that have already occurred for this prompt.
+- On the first attempt, failure_brief.events is [], and history.events contains all available context.
+- On ATTEMPT-level retries, failure_brief.events typically only contains the most recent ok=false ATTEMPT for the current subtask; if there is a consecutive failure chain, all are placed in this list from oldest to newest.
+
+target (the landing target already decided by the host for this ATTEMPT, used only as input for this round of generation)
+- target.big_task_id: the big_task_id that must be used for this ATTEMPT, equal to the big_task_id of the latest PLAN for the current BigTask.
+- target.subtask_id: the subtask_id that must be used for this ATTEMPT, must be findable in the subtasks_blueprint of the latest PLAN for the current BigTask.
+- target.subtask_text: the natural language description of the current subtask, used only to understand what this ATTEMPT should land.
+
+================================================================
+Construction goal
+================================================================
+You ultimately only output a JSON containing `user_query` and `acceptance_criteria` for the current task text "{{TARGET_SUBTASK_TEXT}}".
+
+user_query requirements:
+- Strictly aligned with the current `subtask_text`; do not expand into additional requirements, nor reduce to only a vague overview.
+- Must be self-contained user language: relying solely on this `user_query`, the agent should be able to understand what type of result, constraint, or withdrawal intent the current user actually wants; do not hide key requirements in host perspective, patch details, test semantics, failure_brief explanations, or default background.
+- Do not leak oracle solution progress, hidden implementation steps, fix routes, file editing order, which function to change first then which file, what new helper should be added, what internal mechanism should be reused, what command sequence should be followed, or other process-oriented hints in `user_query`; you may describe target behavior and user-observable results, but do not reverse-inject a specific implementation path into the instruction.
+- Only express the user's goal, constraint, or withdrawal intent; do not mix in assistant explanations, implementation plans, test plans, host perspective, patch descriptions, or evaluation information.
+- Format is fixed as `{"role": "user", "content": "..."}`, with only `role` / `content` two fields. `role` must always be `user`. `content` must be a non-empty string.
+- Do not write so specifically that it points to a single implementation route, nor so vaguely that subsequent tests cannot determine instruction alignment.
+- Must clearly express the feature/behavioral change the user wants, but do not directly specify the implementation route.
+- Must allow subsequent ATTEMPTs to design own_f2p around core functional changes, rather than only being able to test documentation, logs, test file existence, or internal implementation details.
+
+acceptance_criteria requirements:
+- Describe in natural language how this subtask counts as complete.
+- Describe the final observable functional behavior, not implementation details.
+- Must not be too loose: must not omit core functionality, behavior, or results that the instruction explicitly requires and that this ATTEMPT attempts to prove through own_f2p or the test forms allowed by the current branch.
+- Must not be too strict: must not introduce additional constraints not stated in the instruction nor reasonably implied, such as additional format requirements, hidden boundary conditions, implementation detail binding, private helper names, fixed intermediate steps, fixed call order, specific refactoring patterns, etc.
+- Tests must allow multiple different implementation approaches to pass; as long as the model patch achieves the same final target functionality, it should be able to pass the semantic check of the corresponding branch, even if the internal structure, helper functions, algorithm steps are different from what was anticipated.
+- **Prioritize verifying through externally observable behavior** to avoid directly binding specific internal symbol names in tests, to allow different implementation approaches; if a specific internal symbol truly cannot be avoided (very rare cases), then **that symbol name must be explicitly written into user_query and acceptance_criteria**, and the verifier will only then allow such assertions.
+
+{{#if_failure_brief_nonempty}}
+Current branch: single ATTEMPT retry (failure_brief.events is non-empty). This branch still allows calling docker_cli/tool_calls; if you need to confirm what the failed ATTEMPT in the context is doing, you may view failure_brief.events and history.events, but ultimately only output the user query and acceptance_criteria for this step.
+- You may correct the wording of the user query based on the failure reasons exposed in failure_brief.events, making it more accurately correspond to the current subtask_text.
+- You are allowed to correct issues from the previous round's user query such as being too narrow, too broad, not self-contained, unclear withdrawal semantics, or carrying implementation route hints.
+- But you are not allowed to use correcting the user query as an excuse to rewrite the subtask semantics; the corrected user query must still serve the same `target.subtask_text`.
+{{/if_failure_brief_nonempty}}
+
+================================================================
+Output JSON schema
+================================================================
+{
+  "user_query": {"role": "user", "content": "<natural language>"},
+  "acceptance_criteria": "<how this subtask counts as complete>"
+}
+
+[/USER]

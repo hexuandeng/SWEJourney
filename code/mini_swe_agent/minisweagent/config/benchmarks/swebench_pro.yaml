@@ -1,0 +1,24 @@
+# SWE-bench Pro benchmark config (layered on top of swebench.yaml)
+# Usage: -c swebench.yaml -c swebench_pro.yaml -c <model>.yaml
+
+agent:
+  step_limit: 500  # Pro tasks are harder; override swebench.yaml's 250
+
+environment:
+  timeout: 450  # Pro tasks are multi-file / multi-step, need more time per command
+
+run:
+  task_template: |
+    {{ problem_statement }}
+    {%- if requirements %}
+
+    ## Requirements
+
+    {{ requirements }}
+    {%- endif %}
+    {%- if interface %}
+
+    ## Interface
+
+    {{ interface }}
+    {%- endif %}

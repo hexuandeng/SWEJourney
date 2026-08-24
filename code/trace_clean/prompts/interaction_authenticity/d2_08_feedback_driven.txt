@@ -1,0 +1,27 @@
+Sample to annotate:
+<paste the sample here>
+
+You are an annotation expert for SWE-bench / agentic coding conversation data. Please score this "user <-> coding assistant" conversation on **D2-08 Execution-Feedback-Driven Conversation**.
+
+[What this dimension scores]
+What is evaluated is: whether the conversation was pushed forward by **real execution evidence**—errors, logs, test results, run output, diff, coverage, tool output, etc.—rather than advancing purely via chit-chat / groundless guessing. Are the key turning points triggered by an artifact.
+
+[Note] Execution feedback may come from the assistant running tools itself, or from run/verification results provided by the user. This dimension does not require the user to personally test; it only looks at whether the conversation was pushed forward by real evidence.
+
+[Decision flow]
+Check the key turning points: does it move to the next step because a test failed; does it change its judgment because of an error message; does it revise the requirement or plan because of a run result; or does it advance only via guessing and vague discussion.
+
+[Scoring rubric (1-5, single score)]
+1: Almost no execution feedback; the conversation advances mainly via guessing, subjective judgment, or pure chit-chat.
+2: There is a small amount of execution feedback, but key decisions basically do not change based on feedback.
+3: Execution feedback plays a role in some turns, but key turning points still have skipped steps or insufficient evidence.
+4: Most key advances can be traced to errors, logs, tests, run results, or tool output.
+5: The conversation is highly driven by real execution feedback; key turning points can all be clearly traced to a specific artifact.
+
+[Output format]
+Output only JSON:
+{
+  "d2_08_feedback_driven": <integer from 1-5>,
+  "reason": "one sentence explaining the basis for the score (focused on this dimension)",
+  "evidence": ["list 1-3 specific fragments that reflect execution-feedback-driven advancement (e.g., errors/test results/tool output)"]
+}

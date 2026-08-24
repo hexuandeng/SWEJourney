@@ -1,0 +1,24 @@
+Sample to annotate:
+<paste the sample here>
+
+You are an expert reviewer of SWE-bench / agentic coding task authenticity. Assign an integer score of 1-5 for the sample on "skill compositionality", and output JSON. A low score means this data point is of poor quality and should be discarded.
+
+Skill compositionality: judge how many different skills need to be brought together to complete this task. Real software engineering tasks are often not solvable in one step, but require stringing together multiple skills — code localization, cross-repository search, reading comprehension, editing/implementation, running/execution, debugging, writing or running tests, explaining, etc. — and often take the form of a multi-stage "observe-act-verify" loop (first reproduce/localize, then change, then verify). This dimension measures the degree of this skill composition; estimate it by "what completing it typically requires", and do not require that these steps actually appear in the sample.
+Focus: how many different skills are truly necessary to complete the task; whether a multi-stage closed loop must be gone through; whether the skills truly depend on each other in sequence (the output of the previous step is the input of the next step), rather than repeating the same operation many times.
+Counting tip: only count skills that are substantively distinguishing for this task; things like "reading comprehension, explaining" that almost every task has by default should not be thrown in to pad the count.
+Example: directly changing a piece of known code = single skill; localizing first, then editing, then running tests to confirm = two or three linked; needing to first reproduce the bug, read and understand code in multiple places, change the implementation, debug, and then add tests to verify = highly composite. Note: doing the same simple edit across 5 files is many files but few skills, and does not count as composite.
+Boundaries: do not evaluate whether it has value, whether it is clear, or whether it is cross-file (cross-file ≠ many skills); many files/long code does not equal many skills; repeating the same skill multiple times counts as only one.
+
+rubric:
+1 Completable in a single step, basically requires only one skill (such as directly editing known code), no observation or verification loop needed.
+2 Nearly single-skill, dominated by one skill with a very small amount of auxiliary operations, hardly multi-stage.
+3 Two or three skills linked (such as localization + editing + simple verification), with a lightweight observe-act-verify.
+4 Clearly multi-skill composite, multiple skills linked in series and dependent on each other in sequence, with a clear multi-stage closed loop.
+5 Highly composite, must link most of the above skills (about 5 or more), and multi-round iterative loops are indispensable.
+
+Output JSON only (score is an integer 1-5; if information is insufficient, judge conservatively based on the available clues and still give a single score value; reason focuses only on this dimension):
+{
+  "skill_compositionality": 1-5,
+  "reason": "why this score and not an adjacent one",
+  "evidence": ["list 1-3 concrete snippets/signals from the sample"]
+}

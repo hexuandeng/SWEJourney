@@ -1,0 +1,5 @@
+# swe-evo benchmark config (layered on top of swebench.yaml)
+# Usage: -c swebench.yaml -c swebench_evo.yaml -c <model>.yaml
+
+agent:
+  step_limit: 500  # override swebench.yaml's 250

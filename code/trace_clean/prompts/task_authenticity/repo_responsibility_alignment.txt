@@ -1,0 +1,22 @@
+Sample to annotate:
+<paste the sample here>
+
+You are an expert reviewer of SWE-bench / agentic coding task authenticity. Assign an integer score of 1-5 for the sample on "repository responsibility alignment", and output JSON. A low score means this data point is of poor quality and should be discarded.
+
+Repository responsibility alignment: judge whether this task is the repository's own business. A real work item should fall within the product boundary and maintenance responsibility of that repository — that is, the repository's maintainers, upon seeing it, would feel "this is indeed our concern, something we should fix or do". What is to be excluded is the "misplaced-repository problem": the task itself may be reasonable, yet it has been stuffed into a repository that is not responsible for this at all, or requires that repository to take on functionality that belongs to upstream dependencies, other projects, or external systems.
+Focus: whether the task goal is one of the reasons this repository exists; whether the landing point of the changes is on the code it truly maintains.
+Example: an HTTP client library being asked to "fix a bug in a JSON parser it depends on" — that is the upstream library's business, misplaced; changes landing mainly in `vendor/`, `third_party/`, or directories obviously copied in from upstream, also lean misplaced; whereas fixing the library's own connection timeout logic is completely aligned.
+
+rubric:
+1 Clearly misplaced, almost unrelated to the repository's responsibility, or requiring it to take on functionality that belongs elsewhere, maintainers would most likely wontfix or redirect.
+2 Broadly misplaced, ownership leans toward "no", the main demand lands in an area the repository is not responsible for, with only occasional peripheral touch.
+3 Ownership is genuinely disputable or neutral, there is a real connection to the repository, but whether it should be responsible for it is a matter of opinion, or the changes straddle core and non-core.
+4 Basically aligned, clearly within the repository's maintenance scope, changes concentrated in relevant modules, with only a small amount of peripheral gray area.
+5 Completely aligned, entirely within the core responsibility, changes concentrated in core modules, maintainers would clearly acknowledge this is a job they should take on.
+
+Output JSON only (score is an integer 1-5; if information is insufficient, judge conservatively based on the available clues and still give a single score value; reason focuses only on this dimension):
+{
+  "repo_responsibility_alignment": 1-5,
+  "reason": "why this score and not an adjacent one",
+  "evidence": ["list 1-3 concrete snippets/signals from the sample"]
+}

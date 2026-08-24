@@ -1,0 +1,16 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# trace_clean runtime path configuration.
+#
+# Precedence: SWEJOURNEY_* environment variable > this file > built-in default
+# (resolved relative to config.py, so the tree is portable). All keys optional;
+# leave empty to use the built-in default. Nothing here is secret.
+#
+# Override the path of this file itself with SWEJOURNEY_CLEAN_CONFIG.
+# ─────────────────────────────────────────────────────────────────────────────
+
+paths:
+  trace_synth_dir: ""   # trace_synth engine dir (reused low-level modules); default ../trace_synth
+  data_dir: ""          # data root holding raw trace + probe intermediates; default ../../data
+  trace_in_dir: ""      # raw agent_trace.v2 input dir; default <data_dir>/trace
+  benchmark_dir: ""     # final cleaned benchmark output; default ../../benchmark
+                        # (env override: SWEJOURNEY_BENCHMARK_DIR — shared with evaluation)

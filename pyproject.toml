@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "swejourney"
+version = "0.1.0"
+description = "Execution-verified agent trajectories for software engineering"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "SWEJourney contributors" }]
+keywords = ["swe-bench", "agent", "benchmark", "software-engineering", "llm"]
+dependencies = [
+    # --- Benchmark generation: code/trace_synth + code/trace_clean ---
+    "requests>=2.31",       # HTTP client for the LLM gateways
+    "swebench>=4.0",        # SWE-bench harness utils: test specs, parsers, directives
+    "unidiff>=0.7",         # unified-diff parsing / patch application
+    "datasets>=2.14",       # HuggingFace load_from_disk for instance datasets
+    "PyYAML>=6.0",          # config.yaml loaders
+    # --- Model evaluation: code/user_simulation + vendored code/mini_swe_agent ---
+    "litellm>=1.40",        # OpenAI-compatible client for the assistant / user-sim models
+    "pydantic>=2.0",        # mini_swe_agent config models
+    "typer>=0.12",          # mini_swe_agent CLI entry points
+    "jinja2>=3.1",          # prompt / observation templating
+    "python-dotenv>=1.0",   # mini_swe_agent global-config loading (import dotenv)
+    "platformdirs>=4.0",    # mini_swe_agent config-dir resolution
+    "rich>=13.0",           # mini_swe_agent console output
+    "tenacity>=8.0",        # mini_swe_agent model-call retries
+    "ijson>=3.2",           # evaluation: streaming parse of large trajectory files
+]
+
+[project.urls]
+Homepage = "https://github.com/<your-org>/SWEJourney"
+Repository = "https://github.com/<your-org>/SWEJourney"
+
+# Docker is required at runtime (invoked via the `docker` CLI to run the
+# per-instance test containers); it is not a pip dependency.
+
+# --- Packaging note --------------------------------------------------------
+# Only the vendored mini-swe-agent (code/mini_swe_agent/minisweagent) is an
+# importable Python package, so it is the only thing installed here. The
+# trace_synth / trace_clean / evaluation / user_simulation directories are
+# run-from-directory script collections — each carries its own top-level
+# config.py and imports its siblings by bare name after a `cd` into the dir
+# (see each subdir's README) — and are intentionally NOT installed as packages.
+# Installing this project (`pip install -e .`) therefore does two things:
+#   1. installs the full runtime dependency set above;
+#   2. makes `import minisweagent` work from anywhere (no sys.path shim needed).
+[tool.setuptools]
+package-dir = { "" = "code/mini_swe_agent" }
+
+[tool.setuptools.packages.find]
+where = ["code/mini_swe_agent"]
+include = ["minisweagent*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.yaml", "*.yml", "*.txt", "*.j2", "*.jinja", "*.jinja2"]

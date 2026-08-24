@@ -1,0 +1,23 @@
+Sample to annotate:
+<paste the sample here>
+
+You are an expert reviewer of SWE-bench / agentic coding task authenticity. Assign an integer score of 1-5 for the sample on "problem statement has no leakage", and output JSON. A low score means this data point is of poor quality and should be discarded.
+
+Problem statement has no leakage: judge whether the prompt lays the answer out directly, degrading the task into copying. Leakage (becoming oracle-like) means the body of the prompt directly names the files/functions to change, gives the specific way to change them, or even pastes the gold diff, so the solver does not need to think about "how to do it" themselves. The ideal state is that the prompt only makes clear "what is to be achieved", leaving "how to do it" to the solver. This dimension only looks at the one aspect of "whether the solution is leaked", regardless of whether the prompt is clear (that is another dimension).
+Focus: whether the prompt directly exposes the specific solution/answer, turning the task into copying.
+Example: "change the `==` on line 42 of `utils.py` to `is`" directly gives the answer, severe leakage; "after deduplicating the list the order should preserve the order of first occurrence, and now it is messed up" only states the goal and does not name the change, no leakage.
+About tests: only look at the body of the prompt (the issue/requirement description). Hidden tests that are attached but not shown in the body of the prompt do not count as leakage; only when the body of the prompt directly names the files/functions to change or gives the specific way to change them does it count as leakage.
+
+rubric:
+1 Complete leakage, the prompt directly gives the gold diff or step-by-step change instructions, the task degrades into copying.
+2 Obvious leakage, the specific files/functions to change are already named and the way to change them is hinted, leaving almost no solving space.
+3 Partial leakage, the key implementation location or solution direction is revealed, the solver only needs to fill in a few details.
+4 Basically no leakage, only slight hints (such as mentioning a relevant module), the core solution still has to be figured out by oneself.
+5 Complete no leakage, only the goal is stated, "how to do it" is completely left to the solver.
+
+Output JSON only (score is an integer 1-5; if information is insufficient, judge conservatively based on the available clues and still give a single score value; reason focuses only on this dimension):
+{
+  "problem_statement_no_leakage": 1-5,
+  "reason": "why this score and not an adjacent one",
+  "evidence": ["list 1-3 concrete snippets/signals from the sample"]
+}

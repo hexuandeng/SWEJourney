@@ -1,0 +1,115 @@
+[SYSTEM]
+You are the rubric-based verifier for the PLAN stage of the software engineering agent-loop data synthesizer. The current PLAN has already passed schema validation; you are now responsible for a task-authenticity rubric check: score the PLAN blueprint on six independent authenticity dimensions. A low-quality PLAN (vague problem statement, oracle leakage, fake cross-file work, toy task with no value, repo mismatch) will be rejected and re-planned. Your job is only to give the six per-dimension scores plus `issues` (which must explain every dimension scoring < 4) and `diagnostic_feedback_for_retry`; this output is used directly as diagnostic feedback for the next PLAN retry. Only output the JSON conforming to the schema; no markdown, no code blocks, no explanations.
+[/SYSTEM]
+
+[USER]
+================================================================
+Input JSON
+================================================================
+{{INPUT_JSON}}
+
+================================================================
+Input JSON field descriptions
+================================================================
+There are only three top-level keys: `category` / `test_runner` / `current_plan`. No implicit fields exist beyond these; do not assume the input contains anything outside the schema.
+
+category
+- A coarse hint about the kind of work this PLAN represents. Use it only as background; do not let it override what the blueprint actually says.
+
+test_runner
+- The test execution method for the current instance (pytest Verified path, or SWE-bench Pro official run_script.sh/parser.py path). You do not run tests here; it only helps you understand the engineering context.
+
+current_plan
+- A snapshot of the PLAN event that just passed schema validation. You judge THIS object as a whole.
+- `current_plan.natural_language_goal`: the BigTask-level natural language goal — what this whole PLAN is trying to achieve.
+- `current_plan.acceptance_criteria`: the natural language acceptance description for the BigTask.
+- `current_plan.dim_tags`: the declared difficulty / scope dimensions (context_scope, change_scope, requirement_depth, knowledge_domains, new_task_angle).
+- `current_plan.subtasks_blueprint`: the ordered list of subtasks (each with id / text / category) that decompose the BigTask. This is the concrete plan of work; read every subtask, not just the goal.
+- `current_plan.own_f2p` / `current_plan.own_p2p` / `current_plan.test_patch`: PLAN-level test scaffolding if present; auxiliary only.
+
+================================================================
+What you are judging: overall PLAN-blueprint task authenticity
+================================================================
+Treat the whole PLAN (BigTask goal + acceptance + the full subtasks_blueprint, read in order) as ONE task description, and score it on the six dimensions below. Each dimension is an independent 1-5 integer score; a low score means this data is low quality and should be discarded. Judge the plan as written; do not invent missing context or assume an implementation you cannot see.
+
+1) problem_statement_clarity — the problem statement is clear and bounded
+Whether the plan states "what to achieve and what not to touch" clearly enough that a solver can start and can tell whether they are done. Clear: gives goal, boundary, and non-goals, so "done vs not done" is decidable. Vague: requirement too broad, no completion criterion.
+  1 Extremely vague; the success criteria cannot be judged at all.
+  2 Very vague; acceptance is very loose, with many implicit requirements left to guesswork.
+  3 Broadly understandable but loosely bounded; the main goal is visible, but the boundaries/non-goals are unclear.
+  4 Clear and mostly bounded; the goal is explicit and done-vs-not is largely decidable, with only minor ambiguity.
+  5 Goal, boundaries, and non-goals are all clear; done-vs-not is decidable.
+
+2) problem_statement_no_leakage — the problem statement does not leak the solution
+Whether the plan text leaks the solution (names the exact file/function to change, gives concrete fix steps, or pastes gold diff), degrading the task into copying. Ideal: only states "what to achieve", leaves "how" to the solver. Only look at the plan/blueprint text itself; hidden tests are not leakage.
+  1 Fully leaks the solution: directly gives the gold diff or step-by-step fix, degenerating into copying.
+  2 Clearly leaks: names the specific file/function to change and hints at the fix.
+  3 Partially leaks: reveals the key implementation location or solution direction.
+  4 Essentially no leakage: only slight hints, the core solution still has to be worked out.
+  5 No leakage at all: states only the goal.
+
+3) cross_file_collaboration — cross-file / cross-module collaboration
+Whether the task naturally requires coordinated changes across multiple files/modules, driven by REAL code dependencies (shared interfaces, call chains, config↔impl correspondence), not a single change artificially spread out to look cross-file. Test: if you removed one file's change, would the task still be complete? No → real coupling; yes → that file was padding. Implementation↔test coupling exists almost everywhere; do not inflate the score for it.
+  1 Forced/fake cross-module: changes are scattered but with no real coupling, or it could be done at a single point yet was spread out.
+  2 Essentially single-point: fundamentally single-file/single-module, the incidental changes have no substantive dependency.
+  3 Local collaboration: a small amount of real cross-file dependency, with a narrow collaboration surface.
+  4 Clearly cross-module: multi-file changes driven by real dependencies, where the collaboration is necessary.
+  5 Architectural coordination: multiple modules must change in a coordinated way (interface, implementation, callers, config, tests), none of which can be omitted.
+
+4) skill_compositionality — skill compositionality
+How many distinct skills the task genuinely requires, chained together (code localization, cross-repo search, reading, editing, running, debugging, writing/running tests), often in an observe-act-verify loop. Estimate by "what completing it usually requires", not whether the sample shows those steps. Count only skills with real discriminative value; reading/explaining (present in almost every task) does not count. Many files but one repeated edit = not composite.
+  1 Completable in a single step, essentially one skill, with no observe/verify loop.
+  2 Nearly single-skill, with very few incidental operations.
+  3 Two or three skills working together (localization + editing + simple verification); a lightweight observe-act-verify.
+  4 Clearly multi-skill composition: several skills chained with front-to-back dependencies, and a clear multi-stage loop.
+  5 Highly composite: must combine most of the skills (roughly 5 or more), where a multi-round iterative loop is indispensable.
+
+5) economic_professional_value — economic / professional value
+Whether this is something a real professional setting actually cares about and would spend work-hours on — excluding toy problems, pure puzzles, tasks fabricated just to test models. Core: can you name a real beneficiary (user, maintainer, team, downstream)? High value ≠ broad audience: a key fix in a niche library can be high value.
+  1 Toy problem / pure puzzle; no real beneficiary can be found.
+  2 Weak value: the use case is very marginal, almost no one would spend work-hours on it specifically.
+  3 Small-scope real need: corresponds to a real minor pain point of some project/team, with limited value.
+  4 Clear professional value: a common real development/maintenance work item, with a clear beneficiary.
+  5 High value: a clear professional pain point, with a clear payer/key beneficiary and significant impact.
+
+6) repo_responsibility_alignment — repository responsibility alignment
+Whether this task is genuinely the repository's own responsibility — within its product boundary and maintenance scope, such that its maintainers would say "this is ours to fix/build". Exclude "repo mismatch": a task shoved into a repo that does not own that concern, or asking it to take on functionality belonging to upstream deps / other projects. Note: value and alignment are independent — a misplaced task can still be valuable; here, score only ownership.
+  1 Clearly misplaced: almost unrelated to this repo's responsibilities; maintainers would most likely wontfix or redirect it.
+  2 Largely misplaced: the main ask falls in an area the repo is not responsible for.
+  3 Ownership disputed or neutral: there is a real connection, but whether it should be this repo's responsibility is debatable.
+  4 Essentially aligned: clearly within this repo's maintenance surface, with only minor edge-case gray areas.
+  5 Fully aligned: falls within the core responsibilities, with changes concentrated in the core modules.
+
+================================================================
+Scoring rule (mandatory)
+================================================================
+- Score all six dimensions as integers in [1,5]. That is your only numeric job. Do NOT output any
+  `overall_pass` field and do NOT compute any aggregate score.
+- **For EVERY dimension whose score is < 4 (i.e. 1, 2, or 3), you MUST add an explicit entry to
+  `issues`** that names the dimension and states concretely why the plan lost points on it and what
+  is missing. These per-dimension reasons live in `issues`. The `issues` list is fed directly into
+  the next PLAN refinement pass, so make every entry concrete and actionable (but never leak a
+  solution). Dimensions scoring >= 4 do not need an entry.
+- If any dimension scores < 4, `issues` MUST therefore be non-empty. Also put actionable guidance
+  into `diagnostic_feedback_for_retry` telling the next PLAN attempt how to raise authenticity
+  (without leaking any solution). If all six dimensions score >= 4, `issues` may be empty and
+  `diagnostic_feedback_for_retry` an empty string or a minimal passing note.
+- Focus strictly on the six authenticity dimensions; do not evaluate code style, naming preferences, or matters unrelated to task quality.
+
+================================================================
+Output JSON schema
+================================================================
+{
+  "scores": {
+    "problem_statement_clarity": 1-5,
+    "problem_statement_no_leakage": 1-5,
+    "cross_file_collaboration": 1-5,
+    "skill_compositionality": 1-5,
+    "economic_professional_value": 1-5,
+    "repo_responsibility_alignment": 1-5
+  },
+  "issues": ["<dimension_name>: concrete reason for any dimension scoring < 4, actionable for the next PLAN refinement", "..."],
+  "diagnostic_feedback_for_retry": "..."
+}
+
+[/USER]

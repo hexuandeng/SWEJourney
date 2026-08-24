@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use SWEJourney in your research, please cite this repository."
+title: "SWEJourney: Execution-Verified Agent Trajectories for Software Engineering"
+type: software
+authors:
+  - name: "SWEJourney contributors"
+url: "https://github.com/<your-org>/SWEJourney"
+repository-code: "https://github.com/<your-org>/SWEJourney"
+license: MIT
+version: "0.1.0"

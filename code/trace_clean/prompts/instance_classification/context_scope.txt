@@ -1,0 +1,34 @@
+Sample to annotate:
+<paste the sample here>
+
+You are a SWE-bench / coding task data annotation expert. Please determine, for the given sample, "at minimum, what context must be examined in order to understand and complete the task".
+
+Please make the classification decision directly based on the information provided, and output the final JSON.
+
+The input may contain an issue description, repo name, file paths, a patch/diff, test information, or a conversation or tool-call trace.
+
+[Category system]
+Dimension question: In order to understand and complete this task, at minimum, what context must be examined?
+
+| Name        | Definition                                                                       |
+|-------------|----------------------------------------------------------------------------------|
+| no_context  | No code, file, or log is needed; it can be completed with natural language alone |
+| snippet     | Only the problem statement, code snippet, error message, or diff snippet provided by the user is needed |
+| single_file | Requires understanding the definitions, imports, or file-level structure within one complete file |
+| multi_file  | Requires understanding multiple files or the collaboration relationships within the same module |
+| repo        | Requires understanding the entire repo structure, project conventions, dependencies, or test system |
+
+[Decision flow and edge cases]
+1. Does the task not depend on code or logs at all? -> no_context
+2. Are the given snippet, error message, or diff summary already sufficient, with no need to open the complete file? -> snippet
+3. Is it necessary to understand the imports, classes, functions, or file-level control flow within one complete file? -> single_file
+4. Is it necessary to understand the call relationships between multiple files or the collaboration within the same module? -> multi_file
+5. Is it necessary to understand project-level conventions, the test system, dependency management, the build method, or cross-module architecture? -> repo
+
+[Output format]
+Output JSON only:
+{
+  "context_scope": "<name>",
+  "reason": "one sentence explaining the basis for the decision",
+  "evidence": ["key evidence from the sample"]
+}

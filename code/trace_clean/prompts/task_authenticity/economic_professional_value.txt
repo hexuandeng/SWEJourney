@@ -1,0 +1,24 @@
+Sample to annotate:
+<paste the sample here>
+
+You are an expert reviewer of SWE-bench / agentic coding task authenticity. Assign an integer score of 1-5 for the sample on "economic/professional value", and output JSON. A low score means this data point is of poor quality and should be discarded.
+
+Economic/professional value: judge whether this task is something that someone in a real professional scenario genuinely cares about and is worth spending work hours on, used to exclude "toy problems, pure algorithmic puzzles, and problems artificially manufactured for problem-setting/model-testing". The core is: can a real beneficiary be identified — some user, maintainer, team, enterprise, or downstream user who would truly benefit from this being done. Note that "high value" ≠ "wide audience": a critical fix in an obscure library has a small audience but very high value; what is judged is "whether anyone truly cares", not "how many people would use it".
+Focus: whether there is an identifiable real beneficiary behind the task; whether it is a job that would naturally arise in real development/operations/product work, rather than an artificial exercise.
+Example: "implement a string-reversal function that can pass this set of unit tests" is basically an exercise problem with no real beneficiary; whereas "fix the out-of-memory crash of the service when users upload large files" has a clear beneficiary and is a real pain point.
+Boundaries: do not evaluate whether the task belongs to this repository (that is responsibility alignment) or whether the statement is clear; a difficult toy problem is still a toy problem; a large amount of code does not equal high value.
+Cross-reference: value and responsibility alignment are mutually independent — a task stuffed into the wrong repository may itself still be very valuable; here, score it by its true value, and do not deduct points because it was "put in the wrong place".
+
+rubric:
+1 Toy problem/pure puzzle, no real beneficiary can be found, like an algorithm exercise or manufactured for model testing.
+2 Weak value, one can barely imagine a use scenario but it is very marginal, and in reality almost no one would specifically invest work hours in it.
+3 Small-scope real need, corresponds to a real small pain point of some specific project or team, someone cares but the value is limited.
+4 Clear professional value, a common work item in real development/maintenance, with a clear beneficiary, and would be taken seriously by project maintainers or engineering teams.
+5 High value, corresponds to a clear professional pain point, with a clear paying party or key beneficiary, and whether it is done has a significant impact.
+
+Output JSON only (score is an integer 1-5; if information is insufficient, judge conservatively based on the available clues and still give a single score value; reason focuses only on this dimension):
+{
+  "economic_professional_value": 1-5,
+  "reason": "why this score and not an adjacent one",
+  "evidence": ["list 1-3 concrete snippets/signals from the sample"]
+}

@@ -1,0 +1,28 @@
+# Runtime dependencies for the full SWEJourney pipeline.
+# Versions reflect a known-good environment; loosen as needed for your setup.
+#
+# Install:  pip install -r requirements.txt
+# Python:   3.10+ recommended.
+#
+# Docker is required at runtime (invoked via the `docker` CLI) to run the
+# per-instance test containers; it is not a pip dependency. API keys are read
+# from environment variables (see each subdir's config.yaml / README); no
+# credential package is needed.
+
+# --- Benchmark generation: code/trace_synth + code/trace_clean ---
+requests>=2.31          # HTTP client for the LLM gateways
+swebench>=4.0           # SWE-bench harness utils: test specs, parsers, directives
+unidiff>=0.7            # unified-diff parsing / patch application
+datasets>=2.14          # HuggingFace load_from_disk for instance datasets
+PyYAML>=6.0             # config.yaml loader
+
+# --- Model evaluation: code/user_simulation (+ vendored code/mini_swe_agent) ---
+litellm>=1.40           # OpenAI-compatible client for the assistant / user-sim models
+pydantic>=2.0           # mini_swe_agent config models
+typer>=0.12             # mini_swe_agent CLI entry points
+jinja2>=3.1             # prompt / observation templating
+python-dotenv>=1.0      # mini_swe_agent global-config loading (import dotenv)
+platformdirs>=4.0       # mini_swe_agent config-dir resolution
+rich>=13.0              # mini_swe_agent console output
+tenacity>=8.0           # mini_swe_agent model-call retries
+ijson>=3.2              # code/evaluation: streaming parse of large trajectory files

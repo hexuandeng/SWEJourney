@@ -1,0 +1,38 @@
+# --sim-config template: product / business requirement owner (D1=product_stakeholder)
+# The dimension values are only "choices"; the corresponding detailed behavior guidance is
+# rendered from the {{#if_D*}} conditional blocks in prompts/user_sim_call.txt according to each
+# value (only the block for the selected value appears).
+user_sim:
+  name: product_stakeholder
+  # prompt_path omitted -> falls back to the bundled prompts/user_sim_call.txt.
+
+  # User-sim LLM endpoint (OpenAI-compatible /v1). Point at your own served model.
+  model_name: "your-user-sim-model"
+  endpoint_url: "http://127.0.0.1:18521/v1/chat/completions"
+  request_timeout: 7200
+  confidence_init: 50
+  confidence_floor: 0
+
+  dimensions:
+    D1_user_expertise: product_stakeholder
+    D2_detail_preference: wants_direct_answer
+    D3_control_style: autonomous_handoff
+    D4_goal_stability: fixed_goal
+    D5_verification_style: no_user_check
+
+  max_tool_steps: 20
+  timeout_sec: 7200
+
+  # This persona has D5=no_user_check: a PM-type user does not verify or run pytest themselves;
+  # the hidden-test tool is disabled. They can only mark_subtask based on the assistant's
+  # self-reported results + business acceptance judgment.
+  tools_disabled:
+    - run_subtask_test
+
+  rubric:
+    enabled: true
+    # verify_prompt_path omitted -> falls back to bundled prompts/verify_user_msg.txt.
+    max_attempts: 3
+    min_avg: 4.0
+    min_dim_floor: 2
+    verify_max_attempts: 3

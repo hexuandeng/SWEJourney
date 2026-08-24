@@ -1,0 +1,39 @@
+Sample to annotate:
+<paste the sample here>
+
+You are an annotation expert for SWE-bench / agentic coding conversation data. Please score this "user <-> coding assistant" conversation on **D2-03 Information Disclosure Pacing Authenticity**.
+
+[What this dimension scores]
+Evaluate whether the **timing, quantity, and order** of the user's information disclosure matches real Claude-Code-style interaction—whether information is released on demand and gradually as progress unfolds, rather than being dumped all at once in the first turn or mechanically patched in afterward.
+
+[Claude-Code style (high-score anchor)]
+A real agentic coding user **will not** write all context, constraints, acceptance criteria, and hidden boundaries into the first message all at once. The typical pacing is:
+- The first turn gives only a **concise, goal-oriented** request (what to do + the minimum necessary background), leaving codebase exploration to the assistant;
+- Later information is released **driven by triggering events**: the user supplements the corresponding constraints or details only after the assistant asks a follow-up, reads a specific file, a test fails, approaches diverge, or a step's verification completes;
+- The appearance of new constraints has **clear causality**—it can be directly traced to some progress, error, or question from the previous turn, rather than an out-of-nowhere "actually, we also need...".
+The closer the disclosure is to "on-demand, event-driven, causal," the higher the score.
+
+[Low-score signals]
+- The first turn dumps everything like a hidden acceptance checklist (listing a pile of boundary conditions / file paths / test expectations), leaving the assistant no room to explore;
+- Later additions are unrelated to current progress, like a script pre-arranged by the benchmark designer rather than a genuine response to the assistant's behavior;
+- Key constraints appear only very late and very abruptly, with no triggering cause whatsoever.
+
+[Decision flow]
+Turn by turn, look at where new information appears and its trigger: is the first turn restrained (giving only goal + minimum background)? Can each later addition be traced to the assistant's question/read/failure/verification? Are there abrupt, non-causal new requirements?
+Note: this dimension evaluates the pacing of **information being released on demand and gradually across multiple turns**. If the sample has only a single-turn user input with no later additions, then there is no disclosure pacing to speak of (giving all information at once is the opposite of on-demand release); handle it as **1-3 points** and note in reason "single turn, no multi-turn disclosure pacing".
+
+[Scoring rubric (1-5, single score, strict)]
+This dimension uses a strict standard: cases that could originally only get 3 points or below (mechanical dumping, additions without causality, first turn too full) are all pushed to the bottom; only disclosure that is truly on-demand, event-driven, and causally clear gets a high score.
+1: The first turn is too full, or additions sometimes have causality and sometimes not, mixing genuine reactions with deliberate arrangement; clear traces of a benchmark designer's pre-arranged script.
+2: The first turn is somewhat restrained but still leans full, or most additions can be traced to progress while a few are abrupt and non-causal; the pacing is not stable enough.
+3: Basically consistent with the Claude-Code style; the first turn is restrained, most additions are naturally triggered by the assistant's follow-up/failure/verification, with occasional unnatural spots.
+4: On-demand disclosure is stable; the first turn is concise and goal-oriented, and almost all later information is event-driven with clear causality.
+5: Highly authentic on-demand disclosure; the first turn is concise and goal-oriented, all later information is event-driven with clear causality, entirely the pacing of a real user releasing material as progress unfolds.
+
+[Output format]
+Output only JSON:
+{
+  "d2_03_disclosure_pacing": <integer from 1-5>,
+  "reason": "one sentence explaining the basis for the score (focused on this dimension, indicating whether disclosure is on-demand and event-driven)",
+  "evidence": ["list 1-3 specific fragments that reflect the information disclosure pacing"]
+}

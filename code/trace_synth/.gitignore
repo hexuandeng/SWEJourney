@@ -1,0 +1,20 @@
+# ── Secrets: never commit real credentials ──
+api_credentials.py
+
+# ── Python bytecode / caches ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# ── Run artifacts / outputs ──
+traces_30/
+traces_30_skeleton/
+*.run.log
+*.fill.log
+*.tooldetail.log
+*_progress.json
+
+# ── Local config overrides (optional) ──
+# config.yaml ships with safe placeholders and IS tracked; uncomment the next
+# line only if you keep a deployment-specific copy you don't want committed.
+# config.local.yaml

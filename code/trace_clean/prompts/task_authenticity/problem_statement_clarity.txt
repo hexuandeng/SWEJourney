@@ -1,0 +1,22 @@
+Sample to annotate:
+<paste the sample here>
+
+You are an expert reviewer of SWE-bench / agentic coding task authenticity. Assign an integer score of 1-5 for the sample on "problem statement is clear and bounded", and output JSON. A low score means this data point is of poor quality and should be discarded.
+
+Problem statement is clear and bounded: judge whether the prompt makes clear "what is to be achieved and what must not be touched", so that the solver can start work accordingly and can judge whether they are done. A clear prompt states the goal, the boundaries, and the non-goals that should not be touched; a vague prompt has requirements that are too broad and does not spell out the criterion for being done, so the solver has no way to judge whether they did it right or finished.
+Focus: whether the prompt gives the goal, the boundaries, and the non-goals all at once, so that "done or not done" is judgeable.
+Example: "optimize the performance a bit" is too broad and makes completion unjudgeable, leaning vague; "after deduplicating the list the order should preserve the order of first occurrence, and now it is messed up" has a clear goal and clear boundaries, and is clear.
+
+rubric:
+1 Extremely vague, success criteria completely unjudgeable, the solver has no way to know what to do or what counts as done.
+2 Very vague, acceptance is very loose and leaves multiple unclear implicit requirements, requiring a lot of guessing just to start.
+3 Broadly understandable but loosely bounded, the main goal is discernible, but the boundaries/non-goals are not clearly stated.
+4 Clear and basically bounded, the goal is clear, whether it is done is roughly judgeable, boundaries and non-goals are in place, with only minor ambiguity.
+5 Goal, boundaries, and non-goals are all clear, and whether it is done is judgeable.
+
+Output JSON only (score is an integer 1-5; if information is insufficient, judge conservatively based on the available clues and still give a single score value; reason focuses only on this dimension):
+{
+  "problem_statement_clarity": 1-5,
+  "reason": "why this score and not an adjacent one",
+  "evidence": ["list 1-3 concrete snippets/signals from the sample"]
+}

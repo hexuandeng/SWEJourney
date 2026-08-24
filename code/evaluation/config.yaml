@@ -1,0 +1,14 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# evaluation runtime path configuration.
+#
+# Precedence: SWEJOURNEY_* environment variable > this file > built-in default
+# (resolved relative to config.py, so the tree is portable). All keys optional;
+# leave empty to use the built-in default. Nothing here is secret.
+#
+# Override the path of this file itself with SWEJOURNEY_EVAL_CONFIG.
+# ─────────────────────────────────────────────────────────────────────────────
+
+paths:
+  data_dir: ""        # data root for usersim_final run outputs + cost cache; default ../../data
+  benchmark_dir: ""   # sole evaluation input (final_f2p/final_p2p + own_*); default ../../benchmark
+                      # (env override: SWEJOURNEY_BENCHMARK_DIR — shared with trace_clean)

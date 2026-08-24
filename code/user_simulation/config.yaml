@@ -1,0 +1,35 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# user_simulation — endpoints & model configuration (single source of truth)
+#
+# Everything environment-specific lives here: assistant-model endpoints, the
+# user-sim / judge LLM gateway, and the optional outbound proxy. Ships with
+# placeholder values — fill in your own OpenAI-compatible endpoints before use.
+# Loaded by config.py (config.load_endpoints()); override the file path with
+# the SWEJOURNEY_USERSIM_CONFIG environment variable.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Assistant-model registry: alias -> {model, api_base}.
+# The `--assistant-model <alias>` switch selects an entry here; you can also pass
+# `--assistant-model <name>@<base_url>` freeform without editing this file.
+# For litellm OpenAI-compatible endpoints, `model` needs the "openai/" prefix and
+# `api_base` should end with /v1.
+assistant_models:
+  local:
+    model: "openai/your-model"
+    api_base: "http://127.0.0.1:8000/v1"
+  # Add more aliases pointing at your own served endpoints, e.g.:
+  # modelA: { model: "openai/ModelA", api_base: "http://127.0.0.1:8001/v1" }
+
+# Gateway defaults for the user-sim LLM / judge clients.
+# The API key is read from an environment variable (never stored here).
+gateway:
+  url: "https://api.openai.com/v1/chat/completions"
+  provider: "openai"
+  app_id: ""                # optional; or set via the LLM_APP_ID env var
+  # Optional native-Anthropic-messages endpoint for prefix-cache-friendly routing
+  # (used only when a sim config sets model_kwargs.use_anthropic_messages=true):
+  anthropic_messages_url: ""
+
+# Optional outbound proxy injected into task containers (empty = none).
+# Also overridable at runtime via the DOCKER_HTTP_PROXY environment variable.
+docker_proxy: ""
