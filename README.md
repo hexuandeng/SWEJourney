@@ -2,9 +2,7 @@
 
 # SWEJourney
 
-**A benchmark of multi-step, execution-verified agent trajectories for real-world software engineering tasks.**
-
-30 tasks · 16 repositories · Python / Go / JavaScript / TypeScript · every test verified in a real container
+**Towards More Realistic Evaluation of Coding Assistants through Long-Horizon, Multi-Turn Interaction.**
 
 </div>
 
@@ -12,7 +10,7 @@
 
 ## What is this?
 
-**SWEJourney** packages complete *agent trajectories* for solving real GitHub
+**SWEJourney** packages complete *agent trajectories* for solving realistic coding agent tasks
 issues — not just the final patch, but the whole plan → attempt → verify journey
 — together with **execution-verified** fail-to-pass / pass-to-pass test lists for
 each task.
@@ -23,10 +21,6 @@ tests that prove it. **Every declared test was actually executed inside the task
 Docker image** — nothing is model-asserted. The result is a dataset you can use to
 train or evaluate coding agents on *how* to get to a solution, with a trustworthy
 oracle for *whether* a solution is correct.
-
-Tasks are drawn from **[SWE-bench Verified](https://www.swebench.com/) (8)** and
-**[SWE-bench Pro](https://github.com/scaleapi/SWE-bench_Pro-os) (22)**, spanning 16
-repositories across four languages.
 
 ---
 
@@ -73,16 +67,29 @@ it.
 - **`config`** — provenance + everything needed to reconstruct the environment
   (repo, base commit, Docker image, test runner).
 - **`events`** — the trajectory: `PLAN` blueprints interleaved with the `ok=true`
-  `ATTEMPT` for each subtask (failed/retried attempts are dropped). Each ATTEMPT
+  `ATTEMPT` for each subtask. Each ATTEMPT
   carries the gold code change and the tests that gate it.
 - **`final_f2p` / `final_p2p`** — the task-level oracle: which tests must go from
-  **fail → pass** (proving the fix) and which must **stay passing** (proving no
-  regression). These are flat, de-duplicated, and **gold-calibrated** — nodes that
+  **fail → pass** (proving the fix) and which must stay passing (proving no
+  regression). These are flat, de-duplicated, and gold-calibrated — nodes that
   are broken by data/environment issues are removed, and any "pass-to-pass" node
   that does not actually pass from the starting state is moved into fail-to-pass.
   The two lists never overlap.
 
-### Using it
+---
+
+## Evaluating a model
+
+To score a coding model on the benchmark with the simulated-user closed loop,
+use the second driver script (configure the assistant endpoints in
+`code/user_simulation/config.yaml` first):
+
+```bash
+MODELS="your-model" ./run_model_eval.sh   # → data/usersim_final/… + a score table
+```
+
+It runs `code/user_simulation` for each model × instance × persona, then
+`code/evaluation` prints the per-dimension score table.
 
 Load a task and read its oracle:
 
@@ -163,55 +170,6 @@ python probe_allgold.py            # apply all gold, find bad nodes
 python probe_base_seed.py          # apply SEED only, split p2p baseline
 python build_benchmark.py --force  # → ../../benchmark/<id>.json
 ```
-
-## Evaluating a model
-
-To score a coding model on the benchmark with the simulated-user closed loop,
-use the second driver script (configure the assistant endpoints in
-`code/user_simulation/config.yaml` first):
-
-```bash
-MODELS="your-model" ./run_model_eval.sh   # → data/usersim_final/… + a score table
-```
-
-It runs `code/user_simulation` for each model × instance × persona, then
-`code/evaluation` prints the per-dimension score table.
-
-
-### About `data/`
-
-`data/` holds the large, regenerated intermediates and is **not tracked in git**
-(the raw traces alone are multiple GB):
-
-- `data/trace/` — raw `agent_trace.v2` traces emitted by `trace_synth` (stage 1).
-- `data/_allgold_probe/`, `data/_base_seed_probe/` — the two gold-side calibration
-  probe outputs consumed by `build_benchmark.py` (stage 2).
-
-You do **not** need `data/` to *use* the benchmark — it is fully reconstructible by
-re-running the pipeline above, and the finished product is already in
-`benchmark/`.
-
----
-
-## Citation
-
-If you use SWEJourney in your research, please cite this repository.
-
-```bibtex
-@misc{swejourney,
-  title  = {SWEJourney: Execution-Verified Agent Trajectories for Software Engineering},
-  author = {SWEJourney contributors},
-  year   = {2026},
-  howpublished = {\url{https://github.com/<your-org>/SWEJourney}}
-}
-```
-
-Underlying task instances originate from
-[SWE-bench Verified](https://www.swebench.com/) and
-[SWE-bench Pro](https://github.com/scaleapi/SWE-bench_Pro-os); please cite those
-works as well.
-
----
 
 ## License
 
